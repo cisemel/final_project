@@ -1,188 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Start Scanning</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <title>Teachable Machine Webcam Classifier</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
   <style>
     body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: #f6f8fb;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .card {
-      background: white;
-      width: 360px;
-      padding: 40px 30px;
-      border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    h1 {
-      font-size: 22px;
-      font-weight: 600;
-      margin: 0;
-      color: #2b2b2b;
-    }
-
-    p {
-      font-size: 14px;
-      color: #777;
-      margin-top: 8px;
-      margin-bottom: 32px;
+      font-family: sans-serif;
       text-align: center;
+      background-color: #f6f6f6;
+      padding: 40px;
     }
-
-    .scan-button {
-      width: 120px;
-      height: 120px;
-      border-radius: 60px;
-      background: #f2f2f2;
-      border: none;
-      color: #2b2b2b;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-
-    .scan-button:hover {
-      background: #e6e6e6;
-    }
-
-    .camera-box {
-      margin-top: 32px;
-      background: #f8f8f8;
-      width: 180px;
-      height: 180px;
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .camera-icon {
-      font-size: 48px;
-      color: #555;
-    }
-
-    .feedback {
+    #webcam-container {
       margin-top: 20px;
-      background: #333;
-      color: white;
-      padding: 8px 16px;
-      border-radius: 18px;
-      font-size: 13px;
-      display: none;
-      align-items: center;
-      gap: 8px;
     }
-
-    #label-container {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #222;
-      text-align: center;
-    }
-
-    footer {
-      margin-top: 32px;
-      font-size: 12px;
-      color: #aaa;
-    }
-
-    canvas {
-      display: none;
+    video, canvas {
+      border-radius: 12px;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Start Scanning</h1>
-    <p>Snap a photo and detect wall cracks using AI</p>
-    <button class="scan-button" onclick="handleClick()">Scan Now</button>
 
-    <div class="camera-box">
-      <span class="camera-icon">📷</span>
-    </div>
+  <h1>Teachable Machine Image Model</h1>
+  <button type="button" onclick="init()">Start</button>
+  <div id="webcam-container"></div>
+  <div id="label-container"></div>
 
-    <div class="feedback" id="feedback">
-      <span>🧠</span>
-      <span id="aiText">Analyzing...</span>
-    </div>
-
-    <div id="label-container"></div>
-    <div id="webcam-container"></div>
-    <footer>Powered by AI</footer>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
-  <script>
+  <script type="text/javascript">
     const URL = "https://teachablemachine.withgoogle.com/models/ujqzgxUrj/";
+
     let model, webcam, labelContainer, maxPredictions;
-    let initialized = false;
 
-    async function initModelAndWebcam() {
-      const modelURL = URL + "model.json";
-      const metadataURL = URL + "metadata.json";
+    async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-      model = await tmImage.load(modelURL, metadataURL);
-      maxPredictions = model.getTotalClasses();
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
 
-      webcam = new tmImage.Webcam(200, 200, true);
-      await webcam.setup();
-      await webcam.play();
+        webcam = new tmImage.Webcam(200, 200, true);
+        await webcam.setup();
+        await webcam.play();
 
-      document.getElementById("webcam-container").appendChild(webcam.canvas);
-      webcam.canvas.style.display = "none";
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+        labelContainer.innerHTML = "";
+        for (let i = 0; i < maxPredictions; i++) {
+            labelContainer.appendChild(document.createElement("div"));
+        }
 
-      labelContainer = document.getElementById("label-container");
-      labelContainer.innerHTML = "";
-      for (let i = 0; i < maxPredictions; i++) {
-        labelContainer.appendChild(document.createElement("div"));
-      }
-
-      initialized = true;
+        window.requestAnimationFrame(loop);
     }
 
-    async function handleClick() {
-      const feedback = document.getElementById("feedback");
-      const aiText = document.getElementById("aiText");
+    async function loop() {
+        webcam.update();
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
 
-      if (!initialized) {
-        aiText.innerText = "Activating camera...";
-        feedback.style.display = "flex";
-        await initModelAndWebcam();
-        aiText.innerText = "Camera ready. Tap again!";
-        setTimeout(() => feedback.style.display = "none", 2000);
-        return;
-      }
-
-      feedback.style.display = "flex";
-      aiText.innerText = "Analyzing...";
-
-      webcam.update();
-      const prediction = await model.predict(webcam.canvas);
-
-      setTimeout(() => {
-        aiText.innerText = "✅ Result:";
+    async function predict() {
+        const prediction = await model.predict(webcam.canvas);
         for (let i = 0; i < maxPredictions; i++) {
-          const classPrediction =
-            prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-          labelContainer.childNodes[i].innerText = classPrediction;
+            const classPrediction =
+                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
         }
-        setTimeout(() => feedback.style.display = "none", 3000);
-      }, 1000);
     }
   </script>
 </body>
