@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NEXO Scan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(145deg, #f6f6f6, #ffffff);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .scanner-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 40px 30px;
+      border-radius: 24px;
+      background: #ffffff;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
+      text-align: center;
+      position: relative;
+    }
+
+    .scanner-title {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #222;
+    }
+
+    .scanner-desc {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 50px;
+      line-height: 1.6;
+    }
+
+    .scan-button {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: inset 0 4px 12px rgba(255, 255, 255, 0.6),
+                  0 8px 24px rgba(0, 0, 0, 0.1);
+      position: relative;
+      z-index: 1;
+      overflow: visible;
+    }
+
+    .scan-button::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 180px;
+      height: 180px;
+      background: url('./model/arkaplan.png') no-repeat center center;
+      background-size: contain;
+      transform: translate(-50%, -50%);
+      opacity: 0.35;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .scan-button:hover {
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      opacity: 0;
+      width: 100px;
+      height: 100px;
+      position: absolute;
+      top: 170px;
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    #image-wrapper {
+      margin-top: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    #uploaded-image {
+      width: 120px;
+      height: auto;
+      border-radius: 8px;
+      display: none;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+    }
+
+    #result {
+      font-size: 15px;
+      font-weight: 500;
+      color: #222;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scanner-card">
+    <h1 class="scanner-title">NEXO</h1>
+    <p class="scanner-desc">
+      Let’s discover what’s behind your wall.<br>
+      Upload a photo and get instant AI-powered insights.
+    </p>
+
+    <div class="scan-button"></div>
+    <input type="file" accept="image/*" id="upload-image" />
+
+    <div id="image-wrapper">
+      <img id="uploaded-image" />
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+
+  <script>
+    const MODEL_PATH = "./model/";
+    let model, maxPredictions;
+
+    async function init() {
+      const modelURL = MODEL_PATH + "model.json";
+      const metadataURL = MODEL_PATH + "metadata.json";
+
+      try {
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+      } catch (error) {
+        console.warn("Model yüklenemedi ama kullanıcıya gösterilmiyor.");
+      }
+    }
+
+    document.getElementById("upload-image").addEventListener("change", async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const imageElement = document.getElementById("uploaded-image");
+      const resultBox = document.getElementById("result");
+
+      imageElement.src = window.URL.createObjectURL(file);
+      imageElement.style.display = "block";
+      resultBox.style.display = "block";
+
+      imageElement.onload = async () => {
+        if (!model) return;
+        const prediction = await model.predict(imageElement);
+        const result = prediction
+          .map(p => `${p.className}: ${Math.round(p.probability * 100)}%`)
+          .join("<br>");
+        resultBox.innerHTML = result;
+      };
+    });
+
+    init();
+  </script>
+</body>
+</html>
