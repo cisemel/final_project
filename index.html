@@ -5,7 +5,6 @@
   <title>NEXO Scan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-
   <style>
     * {
       box-sizing: border-box;
@@ -43,7 +42,7 @@
     .scanner-desc {
       font-size: 14px;
       color: #666;
-      margin-bottom: 50px;
+      margin-bottom: 40px;
       line-height: 1.6;
     }
 
@@ -57,26 +56,6 @@
                   0 8px 24px rgba(0, 0, 0, 0.1);
       position: relative;
       z-index: 1;
-      overflow: visible;
-    }
-
-    .scan-button::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 180px;
-      height: 180px;
-      background: url('./model/arkaplan.png') no-repeat center center;
-      background-size: contain;
-      transform: translate(-50%, -50%);
-      opacity: 0.35;
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    .scan-button:hover {
-      cursor: pointer;
     }
 
     input[type="file"] {
@@ -84,7 +63,7 @@
       width: 100px;
       height: 100px;
       position: absolute;
-      top: 170px;
+      top: 225px;
       left: 50%;
       transform: translateX(-50%);
       cursor: pointer;
@@ -133,6 +112,7 @@
     </div>
   </div>
 
+  <!-- AI kütüphaneleri -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
 
@@ -147,8 +127,9 @@
       try {
         model = await tmImage.load(modelURL, metadataURL);
         maxPredictions = model.getTotalClasses();
+        console.log("✅ Model loaded successfully");
       } catch (error) {
-        console.warn("Model yüklenemedi ama kullanıcıya gösterilmiyor.");
+        console.warn("⚠️ Model could not be loaded:", error);
       }
     }
 
@@ -163,13 +144,26 @@
       imageElement.style.display = "block";
       resultBox.style.display = "block";
 
+      console.log("📸 Image loaded:", file.name);
+
       imageElement.onload = async () => {
-        if (!model) return;
-        const prediction = await model.predict(imageElement);
-        const result = prediction
-          .map(p => `${p.className}: ${Math.round(p.probability * 100)}%`)
-          .join("<br>");
-        resultBox.innerHTML = result;
+        console.log("🔍 Running prediction...");
+        if (!model) {
+          console.log("⚠️ Model not loaded");
+          return;
+        }
+
+        try {
+          const prediction = await model.predict(imageElement);
+          console.log("✅ Prediction result:", prediction);
+
+          const result = prediction
+            .map(p => `${p.className}: ${Math.round(p.probability * 100)}%`)
+            .join("<br>");
+          resultBox.innerHTML = result;
+        } catch (err) {
+          console.error("Prediction failed:", err);
+        }
       };
     });
 
